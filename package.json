@@ -1,0 +1,15 @@
+{
+  "name": "market-resolution-chatbot",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "airtable": "^0.12.2",
+    "ethers": "^6.15.0"
+  }
+}
