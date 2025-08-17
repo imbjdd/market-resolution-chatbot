@@ -1,2 +1,6 @@
 node_modules/
 package-lock.json
+markets_data.json
+markets.json
+
+.env
