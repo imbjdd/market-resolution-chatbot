@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mv:*)",
+      "Bash(npm install:*)",
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "WebFetch(domain:docs.honc.dev)",
+      "Bash(npm create:*)",
+      "Bash(npm run dev:*)",
+      "WebFetch(domain:hono.dev)",
+      "WebFetch(domain:vercel.com)",
+      "Bash(pnpm add:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "defaultMode": "acceptEdits"
+  }
+}
