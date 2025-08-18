@@ -1,5 +1,6 @@
 import anime from "../public/anime.svg";
 import Image from "next/image";
+import VideoPlayer from "./components/VideoPlayer";
 
 export default function Home() {
   return (
@@ -21,7 +22,7 @@ export default function Home() {
           </div>
         </div>
         <div className="flex justify-end w-full">
-          <div className="h-80 w-60 bg-amber-400"></div>
+          <VideoPlayer />
         </div>
       </div>
       <div className="flex flex-col items-center gap-12">
