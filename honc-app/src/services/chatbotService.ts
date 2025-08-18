@@ -57,7 +57,17 @@ export async function runChatbot(userMessage: string, env: any): Promise<string>
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { 
             role: "system", 
-            content: "You are a helpful assistant that provides information about prediction markets. Use the available tools to fetch market data from Airtable when users ask about markets, trading, predictions, or specific market details."
+            content: `You are a helpful assistant that provides information about prediction markets. 
+
+CRITICAL RULE: When users ask about ANY market, you MUST ALWAYS call the get_markets function first with a search parameter before giving any response.
+
+For questions like "Has Market X resolved?":
+1. IMMEDIATELY call get_markets with search: "Market X" (and also try search: "X" if first search fails)
+2. NEVER respond without searching first
+3. If you find markets, provide the status directly
+4. Only say you can't find anything AFTER you've actually searched
+
+You MUST use tools for every market-related question. Do not give responses without searching first.`
         },
         { role: "user", content: userMessage }
     ];
@@ -108,7 +118,17 @@ export async function* runChatbotStream(userMessage: string, env: any): AsyncGen
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { 
             role: "system", 
-            content: "You are a helpful assistant that provides information about prediction markets. Use the available tools to fetch market data from Airtable when users ask about markets, trading, predictions, or specific market details."
+            content: `You are a helpful assistant that provides information about prediction markets. 
+
+CRITICAL RULE: When users ask about ANY market, you MUST ALWAYS call the get_markets function first with a search parameter before giving any response.
+
+For questions like "Has Market X resolved?":
+1. IMMEDIATELY call get_markets with search: "Market X" (and also try search: "X" if first search fails)
+2. NEVER respond without searching first
+3. If you find markets, provide the status directly
+4. Only say you can't find anything AFTER you've actually searched
+
+You MUST use tools for every market-related question. Do not give responses without searching first.`
         },
         { role: "user", content: userMessage }
     ];

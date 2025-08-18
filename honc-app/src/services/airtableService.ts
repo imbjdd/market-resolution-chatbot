@@ -25,7 +25,28 @@ export async function getMarkets({ status, category, search, limit = 10 }: Marke
             filters.push(`{Category} = '${category}'`);
         }
         if (search) {
-            filters.push(`OR(SEARCH('${search}', {Title}), SEARCH('${search}', {Description}))`);
+            // Try multiple search strategies for flexible matching
+            const searchTerms = [];
+            
+            // Search in title and description
+            searchTerms.push(`SEARCH('${search}', {Title})`);
+            searchTerms.push(`SEARCH('${search}', {Description})`);
+            
+            // If search term contains "Market" followed by a number, also search by that number
+            const marketMatch = search.match(/market\s*(\d+)/i);
+            if (marketMatch) {
+                const number = marketMatch[1];
+                searchTerms.push(`{Market ID} = '${number}'`);
+                searchTerms.push(`SEARCH('${number}', {Title})`);
+                searchTerms.push(`SEARCH('${number}', {Description})`);
+            }
+            
+            // If search is just a number, search by Market ID and in content
+            if (/^\d+$/.test(search)) {
+                searchTerms.push(`{Market ID} = '${search}'`);
+            }
+            
+            filters.push(`OR(${searchTerms.join(', ')})`);
         }
 
         if (filters.length > 0) {
