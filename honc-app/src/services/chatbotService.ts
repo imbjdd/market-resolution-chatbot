@@ -108,7 +108,11 @@ You MUST use tools for every market-related question. Do not give responses with
         });
     }
 
-    return response.choices[0].message.content || "No response";
+    const finalResponse = response.choices[0].message.content;
+    console.log('Final response:', finalResponse);
+    console.log('Tool calls in final response:', response.choices[0].message.tool_calls);
+    
+    return finalResponse || "No response generated";
 }
 
 export async function* runChatbotStream(userMessage: string, env: any): AsyncGenerator<string> {

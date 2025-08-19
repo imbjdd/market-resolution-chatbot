@@ -25,28 +25,21 @@ export async function getMarkets({ status, category, search, limit = 10 }: Marke
             filters.push(`{Category} = '${category}'`);
         }
         if (search) {
-            // Try multiple search strategies for flexible matching
-            const searchTerms = [];
-            
-            // Search in title and description
-            searchTerms.push(`SEARCH('${search}', {Title})`);
-            searchTerms.push(`SEARCH('${search}', {Description})`);
-            
-            // If search term contains "Market" followed by a number, also search by that number
+            // Extract number from search if it contains "market X" pattern
             const marketMatch = search.match(/market\s*(\d+)/i);
+            const justNumber = /^\d+$/.test(search);
+            
             if (marketMatch) {
+                // Search for "Market 2" -> search by ID "2"
                 const number = marketMatch[1];
-                searchTerms.push(`{Market ID} = '${number}'`);
-                searchTerms.push(`SEARCH('${number}', {Title})`);
-                searchTerms.push(`SEARCH('${number}', {Description})`);
+                filters.push(`OR({Market ID} = '${number}', SEARCH('${search}', {Title}), SEARCH('${search}', {Description}))`);
+            } else if (justNumber) {
+                // Search for "2" -> search by ID "2"
+                filters.push(`OR({Market ID} = '${search}', SEARCH('${search}', {Title}), SEARCH('${search}', {Description}))`);
+            } else {
+                // Regular text search
+                filters.push(`OR(SEARCH('${search}', {Title}), SEARCH('${search}', {Description}))`);
             }
-            
-            // If search is just a number, search by Market ID and in content
-            if (/^\d+$/.test(search)) {
-                searchTerms.push(`{Market ID} = '${search}'`);
-            }
-            
-            filters.push(`OR(${searchTerms.join(', ')})`);
         }
 
         if (filters.length > 0) {
