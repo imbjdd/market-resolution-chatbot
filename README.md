@@ -63,6 +63,13 @@ AIRTABLE_TABLE_NAME=your_table_name
 For Cloudflare Workers, use `.dev.vars` instead of `.env` in the `honc-app/` directory.
 
 ### Installation
+
+#### Using Docker (Recommended)
+```bash
+docker-compose up --build
+```
+
+#### Manual Installation
 ```bash
 npm install
 cd honc-app && npm install
