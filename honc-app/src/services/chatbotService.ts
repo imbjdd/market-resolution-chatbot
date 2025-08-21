@@ -50,10 +50,31 @@ const marketTools = [
     }
 ];
 
-export async function runChatbot(userMessage: string, env: any): Promise<string> {
+// Helper function to detect Market IDs in messages
+function detectMarketIds(message: string): string[] {
+    // Regex pour détecter les Market IDs (uniquement des nombres)
+    const marketIdRegex = /market\s*(?:id\s*)?[:#]?\s*(\d+)/gi;
+    const matches = [];
+    let match;
+    
+    while ((match = marketIdRegex.exec(message)) !== null) {
+        const id = match[1];
+        if (id) {
+            matches.push(id);
+        }
+    }
+    
+    return [...new Set(matches)]; // Remove duplicates
+}
+
+export async function runChatbot(userMessage: string, env: any): Promise<{ response: string; quickActions?: Array<{type: 'show_market', label: string, marketId: string, marketUrl?: string}> }> {
     const openai = new OpenAI({ 
         apiKey: env.OPENAI_API_KEY 
     });
+    
+    // Détecter les Market IDs dans le message
+    const detectedMarketIds = detectMarketIds(userMessage);
+    
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { 
             role: "system", 
@@ -66,6 +87,8 @@ For questions like "Has Market X resolved?":
 2. NEVER respond without searching first
 3. If you find markets, provide the status directly
 4. Only say you can't find anything AFTER you've actually searched
+
+SPECIAL: If a specific Market ID is detected in the user message (${detectedMarketIds.length > 0 ? `like: ${detectedMarketIds.join(', ')}` : ''}), prioritize using get_market_details with that exact ID.
 
 You MUST use tools for every market-related question. Do not give responses without searching first.`
         },
@@ -112,7 +135,24 @@ You MUST use tools for every market-related question. Do not give responses with
     console.log('Final response:', finalResponse);
     console.log('Tool calls in final response:', response.choices[0].message.tool_calls);
     
-    return finalResponse || "No response generated";
+    // Generate quick actions if market IDs were detected
+    const quickActions: Array<{type: 'show_market', label: string, marketId: string, marketUrl?: string}> = [];
+    
+    if (detectedMarketIds.length > 0) {
+        for (const marketId of detectedMarketIds) {
+            quickActions.push({
+                type: 'show_market',
+                label: `View Market ${marketId}`,
+                marketId: marketId,
+                marketUrl: `https://alpha.xo.market/markets/${marketId}`
+            });
+        }
+    }
+    
+    return {
+        response: finalResponse || "No response generated",
+        quickActions: quickActions.length > 0 ? quickActions : undefined
+    };
 }
 
 export async function* runChatbotStream(userMessage: string, env: any): AsyncGenerator<string> {

@@ -33,7 +33,8 @@ const Popup = () => {
       const data = await response.json();
       const assistantMessage: MessageProps = {
         role: 'assistant',
-        content: data.response
+        content: data.response,
+        quickActions: data.quickActions
       };
       
       setMessages(prev => [...prev, assistantMessage]);

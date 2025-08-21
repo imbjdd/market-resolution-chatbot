@@ -1,8 +1,8 @@
 {
   "name": "honc-app",
   "scripts": {
-    "dev": "node server.js",
-    "dev:hono": "tsx dev-server.js",
+    "dev": "wrangler dev src/index.ts --host 0.0.0.0 --port 8787",
+    "dev:express": "node server.js",
     "dev:wrangler": "wrangler dev src/index.ts --host 0.0.0.0 --port 8787",
     "deploy": "wrangler deploy --minify src/index.ts",
     "db:generate": "drizzle-kit generate",

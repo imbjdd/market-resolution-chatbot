@@ -1,12 +1,27 @@
 import { cn } from '@extension/ui';
 import ReactMarkdown from 'react-markdown';
 
+export interface QuickAction {
+  type: 'show_market';
+  label: string;
+  marketId: string;
+  marketUrl?: string;
+}
+
 export interface MessageProps {
   role: 'user' | 'assistant';
   content: string;
+  quickActions?: QuickAction[];
 }
 
-export function Message({ role, content }: MessageProps) {
+const handleQuickAction = (action: QuickAction) => {
+  if (action.type === 'show_market' && action.marketUrl) {
+    // Ouvrir le lien dans un nouvel onglet
+    chrome.tabs.create({ url: action.marketUrl });
+  }
+};
+
+export function Message({ role, content, quickActions }: MessageProps) {
   return (
     <div
       className={cn(
@@ -36,6 +51,21 @@ export function Message({ role, content }: MessageProps) {
             <p className="whitespace-pre-wrap">{content}</p>
           )}
         </div>
+        
+        {/* Quick Actions */}
+        {role === 'assistant' && quickActions && quickActions.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {quickActions.map((action, index) => (
+              <button
+                key={index}
+                onClick={() => handleQuickAction(action)}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded transition-colors duration-200"
+              >
+                🔗 {action.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

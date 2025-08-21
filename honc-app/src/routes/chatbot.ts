@@ -34,11 +34,12 @@ export const chatbotRoutes = new Hono()
     async (c) => {
       try {
         const { message } = c.req.valid("json");
-        const response = await runChatbot(message, c.env);
+        const result = await runChatbot(message, c.env);
         
         return c.json({
-          response,
-          timestamp: new Date().toISOString()
+          response: result.response,
+          timestamp: new Date().toISOString(),
+          quickActions: result.quickActions
         });
       } catch (error: any) {
         return c.json({ error: error.message }, 500);
