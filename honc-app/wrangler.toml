@@ -2,6 +2,10 @@ name = "honc-app"
 compatibility_date = "2025-02-04"
 compatibility_flags = [ "nodejs_compat" ]
 
+[dev]
+host = "0.0.0.0"
+port = 8787
+
 # [vars]
 # MY_VAR = "my-variable"
 

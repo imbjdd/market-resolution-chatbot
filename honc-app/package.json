@@ -1,7 +1,9 @@
 {
   "name": "honc-app",
   "scripts": {
-    "dev": "wrangler dev src/index.ts",
+    "dev": "node server.js",
+    "dev:hono": "tsx dev-server.js",
+    "dev:wrangler": "wrangler dev src/index.ts --host 0.0.0.0 --port 8787",
     "deploy": "wrangler deploy --minify src/index.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -14,10 +16,13 @@
   },
   "dependencies": {
     "@fiberplane/hono": "0.5.2",
+    "@hono/node-server": "^1.13.7",
     "airtable": "^0.12.2",
+    "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.43.1",
     "drizzle-zod": "^0.7.1",
+    "express": "^4.18.2",
     "hono": "^4.7.0",
     "hono-openapi": "^0.4.6",
     "openai": "^5.12.2",

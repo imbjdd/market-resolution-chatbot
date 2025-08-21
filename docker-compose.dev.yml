@@ -1,0 +1,56 @@
+services:
+  # API Hono (dev)
+  honc-api:
+    build:
+      context: ./honc-app
+      dockerfile: Dockerfile
+    container_name: honc-api-dev
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./honc-app:/app
+      - /app/node_modules
+    env_file:
+      - ./honc-app/.env
+    networks:
+      - app-network
+
+  # Landing page Next.js (dev)
+  landingpage:
+    build:
+      context: ./landingpage
+      dockerfile: Dockerfile.dev
+    container_name: landingpage-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./landingpage:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - app-network
+
+  # Extension Chrome (dev)
+  chrome-extension:
+    build:
+      context: ./chrome-extension
+      dockerfile: Dockerfile
+    container_name: chrome-extension-dev
+    volumes:
+      - ./chrome-extension:/app
+      - /app/node_modules
+      - ./chrome-extension/dist:/app/dist
+    networks:
+      - app-network
+    command: ["pnpm", "dev"]
+
+
+networks:
+  app-network:
+    driver: bridge

@@ -1,0 +1,48 @@
+services:
+  # API Hono
+  honc-api:
+    build:
+      context: ./honc-app
+      dockerfile: Dockerfile
+    container_name: honc-api
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - ./honc-app/.env
+    networks:
+      - app-network
+
+  # Landing page Next.js
+  landingpage:
+    build:
+      context: ./landingpage
+      dockerfile: Dockerfile
+    container_name: landingpage
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - app-network
+
+  # Extension Chrome (build seulement)
+  chrome-extension:
+    build:
+      context: ./chrome-extension
+      dockerfile: Dockerfile
+    container_name: chrome-extension-builder
+    volumes:
+      - ./chrome-extension/dist:/app/dist
+    networks:
+      - app-network
+    profiles:
+      - build
+
+
+networks:
+  app-network:
+    driver: bridge
