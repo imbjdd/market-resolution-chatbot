@@ -6,6 +6,7 @@ import { ErrorDisplay, LoadingSpinner } from '@extension/ui';
 import { MessageList } from './components/MessageList';
 import { ChatInput } from './components/ChatInput';
 import { MessageProps } from './components/Message';
+import { StaleBanner } from './components/StaleBanner';
 
 const Popup = () => {
   const { isLight } = useStorage(exampleThemeStorage);
@@ -60,6 +61,9 @@ const Popup = () => {
           </h1>
         </div>
       </div>
+
+      {/* Stale Data Banner */}
+      <StaleBanner isLight={isLight} />
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto" style={{maxHeight: '400px'}}>

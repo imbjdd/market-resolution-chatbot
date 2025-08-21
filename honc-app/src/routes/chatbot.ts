@@ -6,6 +6,7 @@ import { ZChatRequest, ZChatResponse, ZMarketFilters } from "../dtos/chatbot";
 import { zodValidator } from "../middleware/validator";
 import { runChatbot, runChatbotStream } from "../services/chatbotService";
 import { getMarkets, getMarketDetails } from "../services/airtableService";
+import Airtable from 'airtable';
 
 export const chatbotRoutes = new Hono()
   .post(
@@ -153,6 +154,71 @@ export const chatbotRoutes = new Hono()
         }
         
         return c.json(result);
+      } catch (error: any) {
+        return c.json({ error: error.message }, 500);
+      }
+    }
+  )
+  .get(
+    "/sync-status",
+    describeRoute({
+      description: "Get last sync status",
+      responses: {
+        200: {
+          description: "Sync status retrieved successfully",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  lastSyncedAt: { type: "string", format: "date-time" },
+                  isStale: { type: "boolean" },
+                  hoursAgo: { type: "number" }
+                }
+              }
+            },
+          },
+        },
+      },
+    }),
+    async (c) => {
+      try {
+        const base = new Airtable({ apiKey: c.env.AIRTABLE_API_KEY }).base(c.env.AIRTABLE_BASE_ID);
+        
+        // Get the first record to check last_synced_at
+        const records = await base(c.env.AIRTABLE_TABLE_NAME).select({
+          maxRecords: 1
+        }).firstPage();
+        
+        if (records.length === 0) {
+          return c.json({ 
+            lastSyncedAt: null, 
+            isStale: true, 
+            hoursAgo: null 
+          });
+        }
+        
+        const lastSyncedAt = records[0].fields.last_synced_at;
+        
+        if (!lastSyncedAt) {
+          return c.json({ 
+            lastSyncedAt: null, 
+            isStale: true, 
+            hoursAgo: null 
+          });
+        }
+        
+        const syncDate = new Date(lastSyncedAt as string);
+        const now = new Date();
+        const hoursAgo = (now.getTime() - syncDate.getTime()) / (1000 * 60 * 60);
+        const isStale = true; // Always true for testing purposes
+        
+        return c.json({
+          lastSyncedAt: syncDate.toISOString(),
+          isStale,
+          hoursAgo: Math.round(hoursAgo * 10) / 10
+        });
+        
       } catch (error: any) {
         return c.json({ error: error.message }, 500);
       }

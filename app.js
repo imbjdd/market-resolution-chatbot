@@ -81,6 +81,19 @@ async function updateAirtable(markets) {
             await new Promise(r => setTimeout(r, 1000));
         }
         
+        // Update last_synced_at for the first record only
+        if (markets.length > 0) {
+            console.log('Updating last_synced_at timestamp...');
+            const allRecords = await base(process.env.AIRTABLE_TABLE_NAME).select().all();
+            if (allRecords.length > 0) {
+                const firstRecord = allRecords[0];
+                await base(process.env.AIRTABLE_TABLE_NAME).update(firstRecord.id, {
+                    'last_synced_at': new Date().toISOString()
+                });
+                console.log('Updated last_synced_at timestamp');
+            }
+        }
+        
         console.log('Successfully updated Airtable');
     } catch (error) {
         console.error('Airtable error:', error.message);
