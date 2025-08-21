@@ -28,7 +28,7 @@ export function MessageList({ messages }: MessageListProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto message-container px-1">
       {messages.map((message, index) => (
         <Message key={index} {...message} />
       ))}

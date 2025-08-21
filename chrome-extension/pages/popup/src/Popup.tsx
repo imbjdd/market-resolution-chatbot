@@ -51,7 +51,7 @@ const Popup = () => {
   };
 
   return (
-    <div className={`flex h-full w-full flex-col ${isLight ? 'bg-amber-400' : 'bg-gray-900 text-white'}`} style={{margin: 0, padding: 0}}>
+    <div className={`flex w-full flex-col ${isLight ? 'bg-amber-400' : 'bg-gray-900 text-white'}`} style={{margin: 0, padding: 0, minHeight: '500px', maxHeight: '600px', height: '500px'}}>
       {/* Header */}
       <div className={`flex items-center justify-center bg-white border-b-2 p-3 ${isLight ? 'border-black bg-amber-400' : 'border-gray-700 bg-gray-800'}`}>
         <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ const Popup = () => {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-y-auto" style={{maxHeight: '400px'}}>
         <MessageList messages={messages} />
       </div>
 

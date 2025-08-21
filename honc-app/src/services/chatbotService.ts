@@ -127,7 +127,7 @@ You MUST use tools for every market-related question. Do not give responses with
             model: "gpt-5-mini",
             messages,
             tools: marketTools,
-            tool_choice: "auto"
+            tool_choice: "none"  // Force une réponse finale, pas d'autres tool calls
         });
     }
 
