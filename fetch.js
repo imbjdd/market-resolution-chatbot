@@ -54,6 +54,41 @@ async function getMarketDetails(marketId) {
     } catch (e) { return null; }
 }
 
+async function fetchMarketResolutionReason(marketId, resolverAddress) {
+    try {
+        const filter = contract.filters.MarketResolved(marketId);
+        const events = await contract.queryFilter(filter);
+        
+        if (events.length === 0) return null;
+        
+        const resolvedEvent = events[events.length - 1];
+        
+        if (resolvedEvent.args && resolvedEvent.args.reason) {
+            return resolvedEvent.args.reason;
+        }
+        
+        const tx = await provider.getTransaction(resolvedEvent.transactionHash);
+        if (tx && tx.data) {
+            try {
+                const decodedData = contract.interface.parseTransaction({ data: tx.data, value: tx.value });
+                if (decodedData.args && decodedData.args.reason) {
+                    return decodedData.args.reason;
+                }
+            } catch (e) {
+                console.log(`Could not decode transaction data for market ${marketId}`);
+            }
+        }
+        
+        const blockNumber = resolvedEvent.blockNumber;
+        const block = await provider.getBlock(blockNumber);
+        return `Market resolved at block ${blockNumber} on ${new Date(block.timestamp * 1000).toISOString()}`;
+        
+    } catch (error) {
+        console.log(`Error fetching resolution reason for market ${marketId}:`, error.message);
+        return null;
+    }
+}
+
 async function fetchMarkets() {
     const events = await fetchEvents();
     const results = [];
@@ -77,4 +112,4 @@ async function fetchMarkets() {
     return results;
 }
 
-module.exports = { fetchMarkets };
+module.exports = { fetchMarkets, fetchMarketResolutionReason };

@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { getMarkets, getMarketDetails } from './airtableService';
+import { getMarkets, getMarketDetails, getAllMarketTitles, getResolutionReason } from './airtableService';
 
 const marketTools = [
     {
@@ -28,6 +28,35 @@ const marketTools = [
                     }
                 },
                 required: [],
+            },
+        }
+    },
+    {
+        type: "function" as const,
+        function: {
+            name: "get_all_market_titles",
+            description: "Get a list of all market titles and IDs to help choose the right market for resolution questions.",
+            parameters: {
+                type: "object",
+                properties: {},
+                required: [],
+            },
+        }
+    },
+    {
+        type: "function" as const,
+        function: {
+            name: "get_resolution_reason",
+            description: "Get the resolution reason for a specific market by ID.",
+            parameters: {
+                type: "object",
+                properties: {
+                    marketId: {
+                        type: "string",
+                        description: "The Market ID to get the resolution reason for",
+                    },
+                },
+                required: ["marketId"],
             },
         }
     },
@@ -78,19 +107,21 @@ export async function runChatbot(userMessage: string, env: any): Promise<{ respo
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { 
             role: "system", 
-            content: `You are a helpful assistant that provides information about prediction markets. 
+            content: `You are a helpful assistant that provides information about prediction markets.
 
-CRITICAL RULE: When users ask about ANY market, you MUST ALWAYS call the get_markets function first with a search parameter before giving any response.
+CRITICAL: For ANY market question, you MUST use tools. NEVER give responses without calling tools first.
 
-For questions like "Has Market X resolved?":
-1. IMMEDIATELY call get_markets with search: "Market X" (and also try search: "X" if first search fails)
-2. NEVER respond without searching first
-3. If you find markets, provide the status directly
-4. Only say you can't find anything AFTER you've actually searched
+If the user asks "why was X market resolved" or "tell me why the X market was resolved":
+1. IMMEDIATELY call get_all_market_titles (no parameters needed)
+2. Find the best matching market from the list based on the user's question
+3. IMMEDIATELY call get_resolution_reason with the market ID
+4. Return the exact resolution reason
 
-SPECIAL: If a specific Market ID is detected in the user message (${detectedMarketIds.length > 0 ? `like: ${detectedMarketIds.join(', ')}` : ''}), prioritize using get_market_details with that exact ID.
+For other market questions: use get_markets or get_market_details
 
-You MUST use tools for every market-related question. Do not give responses without searching first.`
+SPECIAL: If Market ID detected (${detectedMarketIds.length > 0 ? `like: ${detectedMarketIds.join(', ')}` : ''}), use get_resolution_reason directly.
+
+YOU MUST CALL TOOLS FOR EVERY MARKET QUESTION.`
         },
         { role: "user", content: userMessage }
     ];
@@ -114,6 +145,10 @@ You MUST use tools for every market-related question. Do not give responses with
                 result = await getMarkets(args, env);
             } else if (toolCall.function.name === "get_market_details") {
                 result = await getMarketDetails(args, env);
+            } else if (toolCall.function.name === "get_all_market_titles") {
+                result = await getAllMarketTitles(env);
+            } else if (toolCall.function.name === "get_resolution_reason") {
+                result = await getResolutionReason(args, env);
             }
 
             messages.push({
@@ -162,17 +197,19 @@ export async function* runChatbotStream(userMessage: string, env: any): AsyncGen
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
         { 
             role: "system", 
-            content: `You are a helpful assistant that provides information about prediction markets. 
+            content: `You are a helpful assistant that provides information about prediction markets.
 
-CRITICAL RULE: When users ask about ANY market, you MUST ALWAYS call the get_markets function first with a search parameter before giving any response.
+CRITICAL: For ANY market question, you MUST use tools. NEVER give responses without calling tools first.
 
-For questions like "Has Market X resolved?":
-1. IMMEDIATELY call get_markets with search: "Market X" (and also try search: "X" if first search fails)
-2. NEVER respond without searching first
-3. If you find markets, provide the status directly
-4. Only say you can't find anything AFTER you've actually searched
+If the user asks "why was X market resolved" or "tell me why the X market was resolved":
+1. IMMEDIATELY call get_all_market_titles (no parameters needed)
+2. Find the best matching market from the list based on the user's question
+3. IMMEDIATELY call get_resolution_reason with the market ID
+4. Return the exact resolution reason
 
-You MUST use tools for every market-related question. Do not give responses without searching first.`
+For other market questions: use get_markets or get_market_details
+
+YOU MUST CALL TOOLS FOR EVERY MARKET QUESTION.`
         },
         { role: "user", content: userMessage }
     ];
@@ -196,6 +233,10 @@ You MUST use tools for every market-related question. Do not give responses with
                 result = await getMarkets(args, env);
             } else if (toolCall.function.name === "get_market_details") {
                 result = await getMarketDetails(args, env);
+            } else if (toolCall.function.name === "get_all_market_titles") {
+                result = await getAllMarketTitles(env);
+            } else if (toolCall.function.name === "get_resolution_reason") {
+                result = await getResolutionReason(args, env);
             }
 
             messages.push({

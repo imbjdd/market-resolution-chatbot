@@ -25,6 +25,76 @@ async function fetchMetadata(url) {
     });
 }
 
+async function fetchResolutionReason(marketId, resolverAddress, resolutionSources, title) {
+    try {
+        if (!resolutionSources || resolutionSources.length === 0) {
+            console.log(`No resolution sources for market ${marketId}`);
+            return null;
+        }
+
+        const OpenAI = require('openai');
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+        const sources = Array.isArray(resolutionSources) ? resolutionSources : [resolutionSources];
+        let resolutionContext = '';
+
+        for (const source of sources.slice(0, 3)) {
+            try {
+                const https = require('https');
+                const http = require('http');
+                
+                const fetchWebContent = (url) => {
+                    return new Promise((resolve) => {
+                        const client = url.startsWith('https:') ? https : http;
+                        const req = client.get(url, { timeout: 15000 }, (res) => {
+                            let data = '';
+                            res.on('data', chunk => data += chunk);
+                            res.on('end', () => resolve(data.slice(0, 5000)));
+                        });
+                        req.on('error', () => resolve(''));
+                        req.on('timeout', () => { req.destroy(); resolve(''); });
+                        req.setTimeout(15000);
+                    });
+                };
+
+                const content = await fetchWebContent(source);
+                if (content) {
+                    resolutionContext += `Source: ${source}\nContent: ${content}\n\n`;
+                }
+            } catch (e) {
+                console.log(`Could not fetch source ${source} for market ${marketId}`);
+            }
+        }
+
+        if (!resolutionContext.trim()) {
+            return null;
+        }
+
+        const prompt = `Based on the following sources and market information, provide a concise explanation (2-3 sentences max) of why this prediction market was resolved:
+
+Market Title: ${title}
+Market ID: ${marketId}
+
+Sources:
+${resolutionContext}
+
+Provide a clear, factual reason for the market resolution based on the evidence from the sources.`;
+
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 200,
+            temperature: 0.1
+        });
+
+        return response.choices[0]?.message?.content?.trim() || null;
+
+    } catch (error) {
+        console.log(`Could not fetch resolution reason for market ${marketId}:`, error.message);
+        return null;
+    }
+}
+
 async function updateAirtable(markets) {
     try {
         console.log(`Updating ${markets.length} markets...`);
@@ -71,6 +141,15 @@ async function updateAirtable(markets) {
                     if (metadata.rules?.description) fields['Rules Description'] = metadata.rules.description;
                     if (metadata.resolution_sources?.length) fields['Resolution Sources'] = metadata.resolution_sources.join('\n');
                     if (metadata.outcomes?.length) fields['Outcomes'] = metadata.outcomes.map(o => `${o.id}: ${o.title}`).join(', ');
+                }
+
+                if (market.resolvedAt > 0) {
+                    const resolutionSources = metadata?.resolution_sources;
+                    const title = metadata?.title || fields['Title'];
+                    const resolutionReason = await fetchResolutionReason(market.marketId, market.resolver, resolutionSources, title);
+                    if (resolutionReason) {
+                        fields['reason_it_was_resolved'] = resolutionReason;
+                    }
                 }
 
                 records.push({ fields });

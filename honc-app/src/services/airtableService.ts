@@ -1,4 +1,5 @@
 import Airtable from 'airtable';
+import Fuse from 'fuse.js';
 
 interface MarketFilters {
     status?: string;
@@ -24,37 +25,95 @@ export async function getMarkets({ status, category, search, limit = 10 }: Marke
         if (category) {
             filters.push(`{Category} = '${category}'`);
         }
-        if (search) {
-            // Extract number from search if it contains "market X" pattern
-            const marketMatch = search.match(/market\s*(\d+)/i);
-            const justNumber = /^\d+$/.test(search);
-            
-            if (marketMatch) {
-                // Search for "Market 2" -> search by ID "2"
-                const number = marketMatch[1];
-                filters.push(`OR({Market ID} = '${number}', SEARCH('${search}', {Title}), SEARCH('${search}', {Description}))`);
-            } else if (justNumber) {
-                // Search for "2" -> search by ID "2"
-                filters.push(`OR({Market ID} = '${search}', SEARCH('${search}', {Title}), SEARCH('${search}', {Description}))`);
-            } else {
-                // Regular text search
-                filters.push(`OR(SEARCH('${search}', {Title}), SEARCH('${search}', {Description}))`);
-            }
-        }
-
-        if (filters.length > 0) {
-            filterFormula = filters.length === 1 ? filters[0] : `AND(${filters.join(', ')})`;
-        }
 
         const base = new Airtable({ apiKey: env.AIRTABLE_API_KEY }).base(env.AIRTABLE_BASE_ID);
         
-        const records = await base(env.AIRTABLE_TABLE_NAME)
-            .select({
+        let records;
+        
+        if (search) {
+            const marketMatch = search.match(/market\s*(\d+)/i);
+            const justNumber = /^\d+$/.test(search);
+            
+            if (marketMatch || justNumber) {
+                const number = marketMatch ? marketMatch[1] : search;
+                const searchFormula = `OR({Market ID} = '${number}', SEARCH('${search}', {Title}), SEARCH('${search}', {Description}))`;
+                
+                if (filters.length > 0) {
+                    filterFormula = `AND(${filters.join(', ')}, ${searchFormula})`;
+                } else {
+                    filterFormula = searchFormula;
+                }
+                
+                records = await base(env.AIRTABLE_TABLE_NAME)
+                    .select({
+                        maxRecords: limit,
+                        filterByFormula: filterFormula,
+                        sort: [{ field: 'Created Date', direction: 'desc' }]
+                    })
+                    .all();
+            } else {
+                if (filters.length > 0) {
+                    filterFormula = filters.length === 1 ? filters[0] : `AND(${filters.join(', ')})`;
+                }
+                
+                const selectOptions: any = {
+                    maxRecords: 1000,
+                    sort: [{ field: 'Created Date', direction: 'desc' }]
+                };
+                
+                if (filterFormula) {
+                    selectOptions.filterByFormula = filterFormula;
+                }
+                
+                records = await base(env.AIRTABLE_TABLE_NAME)
+                    .select(selectOptions)
+                    .all();
+                    
+                const markets = records.map(record => ({
+                    marketId: record.fields['Market ID'],
+                    title: record.fields['Title'] || 'No title',
+                    description: record.fields['Description'] || 'No description',
+                    status: record.fields['Status'],
+                    category: record.fields['Category'] || 'Uncategorized',
+                    creator: record.fields['Creator'],
+                    collateralAmount: record.fields['Collateral Amount'],
+                    createdDate: record.fields['Created Date'],
+                    expiresDate: record.fields['Expires Date'],
+                    resolvedDate: record.fields['Resolved Date'],
+                    outcomes: record.fields['Outcomes'],
+                    tags: record.fields['Tags'],
+                    reasonItWasResolved: record.fields['reason_it_was_resolved']
+                }));
+
+                const fuse = new Fuse(markets, {
+                    keys: ['title', 'description'],
+                    threshold: 0.3,
+                    includeScore: true
+                });
+
+                const fuzzyResults = fuse.search(search);
+                const filteredMarkets = fuzzyResults.map(result => result.item).slice(0, limit);
+                
+                return { markets: filteredMarkets, count: filteredMarkets.length };
+            }
+        } else {
+            if (filters.length > 0) {
+                filterFormula = filters.length === 1 ? filters[0] : `AND(${filters.join(', ')})`;
+            }
+
+            const selectOptions: any = {
                 maxRecords: limit,
-                filterByFormula: filterFormula,
                 sort: [{ field: 'Created Date', direction: 'desc' }]
-            })
-            .all();
+            };
+            
+            if (filterFormula) {
+                selectOptions.filterByFormula = filterFormula;
+            }
+
+            records = await base(env.AIRTABLE_TABLE_NAME)
+                .select(selectOptions)
+                .all();
+        }
 
         const markets = records.map(record => ({
             marketId: record.fields['Market ID'],
@@ -68,7 +127,8 @@ export async function getMarkets({ status, category, search, limit = 10 }: Marke
             expiresDate: record.fields['Expires Date'],
             resolvedDate: record.fields['Resolved Date'],
             outcomes: record.fields['Outcomes'],
-            tags: record.fields['Tags']
+            tags: record.fields['Tags'],
+            reasonItWasResolved: record.fields['reason_it_was_resolved']
         }));
 
         return { markets, count: markets.length };
@@ -112,10 +172,62 @@ export async function getMarketDetails({ marketId }: { marketId: string }, env: 
             rulesDescription: record.fields['Rules Description'],
             resolutionSources: record.fields['Resolution Sources'],
             metadataUri: record.fields['Metadata URI'],
-            blockNumber: record.fields['Block Number']
+            blockNumber: record.fields['Block Number'],
+            reasonItWasResolved: record.fields['reason_it_was_resolved']
         };
 
         return { market };
+    } catch (error: any) {
+        return { error: error.message };
+    }
+}
+
+export async function getAllMarketTitles(env: Env) {
+    try {
+        const base = new Airtable({ apiKey: env.AIRTABLE_API_KEY }).base(env.AIRTABLE_BASE_ID);
+        
+        const records = await base(env.AIRTABLE_TABLE_NAME)
+            .select({
+                fields: ['Market ID', 'Title', 'Status', 'Resolved Date']
+            })
+            .all();
+
+        const markets = records.map(record => ({
+            marketId: record.fields['Market ID'],
+            title: record.fields['Title'] || 'No title',
+            status: record.fields['Status'],
+            resolvedDate: record.fields['Resolved Date']
+        }));
+
+        return { markets };
+    } catch (error: any) {
+        return { error: error.message };
+    }
+}
+
+export async function getResolutionReason({ marketId }: { marketId: string }, env: Env) {
+    try {
+        const base = new Airtable({ apiKey: env.AIRTABLE_API_KEY }).base(env.AIRTABLE_BASE_ID);
+        
+        const records = await base(env.AIRTABLE_TABLE_NAME)
+            .select({
+                filterByFormula: `{Market ID} = '${marketId}'`,
+                fields: ['Market ID', 'Title', 'reason_it_was_resolved', 'Resolved Date', 'Status']
+            })
+            .all();
+
+        if (records.length === 0) {
+            return { error: `Market with ID ${marketId} not found` };
+        }
+
+        const record = records[0];
+        return {
+            marketId: record.fields['Market ID'],
+            title: record.fields['Title'],
+            reasonItWasResolved: record.fields['reason_it_was_resolved'],
+            resolvedDate: record.fields['Resolved Date'],
+            status: record.fields['Status']
+        };
     } catch (error: any) {
         return { error: error.message };
     }

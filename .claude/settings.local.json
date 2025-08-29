@@ -18,7 +18,8 @@
       "Bash(pnpm run:*)",
       "Bash(pnpm install:*)",
       "Bash(pnpm build:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
